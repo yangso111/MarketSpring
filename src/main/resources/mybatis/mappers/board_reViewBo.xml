@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mapper.board.reViewBo">
+	<!-- 리절트 맵 정의 -->
+	<resultMap id="reViewBoardResult" type="reViewBoardVO">
+		<result property="level" column="lvl" />
+		<result property="reView_bo_no" column="reView_bo_no" />
+		<result property="parent_no" column="parent_no" />
+		<result property="title" column="title" />
+		<result property="content" column="content" />
+		<result property="read_count" column="read_count" />
+		<result property="write_date" column="write_date" />
+		<result property="mem_id" column="mem_id" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<resultMap id="reViewBoardImgResult" type="reViewBoardImgVO">
+		<result property="reView_bo_img_no" column="reView_bo_img_no" />
+		<result property="reView_bo_no" column="reView_bo_no" />
+		<result property="img_filename" column="img_filename" />
+		<result property="reg_date" column="reg_date" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<!-- 
+	<resultMap id="reViewBoardLikeResult" type="reViewBoardLikeVO">
+		<result property="reViewBoLikeNO" column="reViewBoLikeNO" />
+		<result property="reViewBoNO" column="reViewBoNO" />
+		<result property="mem_id" column="mem_id" />
+	</resultMap>
+	 -->
+	 
+	<!-- 상품후기게시판 리스트조회(페이징추가) -->
+	<select id="selectAllreViewBoardsList" resultMap="reViewBoardResult" parameterType="java.util.Map">
+		SELECT * 
+		FROM (
+		        SELECT 	ROWNUM as recNum, 
+		        		lvl,	reView_bo_no,	parent_no, 
+		        		title, 	mem_id, 	write_date, 
+		        		read_count,	is_del
+		        FROM (  
+		                SELECT 	LEVEL as lvl, 
+		                		reView_bo_no,	parent_no,	title,	content,
+		                		mem_id, 	write_date,	read_count,	is_del
+		                FROM reView_BOARD 
+		                START WITH  parent_no = 0 
+		                CONNECT BY PRIOR reView_bo_no = parent_no 
+		                ORDER SIBLINGS BY reView_bo_no DESC
+		             )
+		 	 	WHERE 1=1
+				<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+					<if test="s_category == 'title'">
+						AND TITLE LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'content'">
+						AND CONTENT LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'mem_id'">
+						AND mem_id LIKE '%'||#{s_keyword}||'%'
+					</if>
+				</if>	
+			)
+		WHERE recNum BETWEEN (#{section}-1)*100+(#{pageNum}-1)*10+1 AND (#{section}-1)*100+#{pageNum}*10
+	</select>
+	
+	<select id="selectTotreViewBoards" resultType="int" parameterType="java.util.Map">
+    	SELECT 	NVL(COUNT(*),0) AS CNT
+		FROM (  
+		        SELECT 	LEVEL as lvl, 
+		                reView_bo_no,	parent_no,	title,	content,
+		                mem_id, 	write_date,	read_count 
+		        FROM reView_BOARD 
+		        START WITH  parent_no = 0 
+		        CONNECT BY PRIOR reView_bo_no = parent_no 
+		        ORDER SIBLINGS BY reView_bo_no DESC
+		     )
+		WHERE 1=1
+		<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+			<if test="s_category == 'title'">
+				AND TITLE LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'content'">
+				AND CONTENT LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'mem_id'">
+				AND mem_id LIKE '%'||#{s_keyword}||'%'
+			</if>
+		</if>
+	</select>
+	
+	<select id="selectreViewBoard" resultType="reViewBoardVO" parameterType="int">
+	    <![CDATA[
+	      SELECT *
+	      FROM reView_BOARD
+	      WHERE reView_bo_no = #{reViewBoardNO}	
+	    ]]>
+    </select>
+	
+	<select  id="selectImgFileList" resultMap="reViewBoardImgResult" parameterType="int">
+    	<![CDATA[
+	      SELECT * 
+	      FROM reView_BOARD_IMG
+	      WHERE reView_bo_no = #{reViewBoardNO}	
+	    ]]>
+  	</select>  
+  	
+	<update id="updateReadCnt" parameterType="int">
+	    <![CDATA[
+	      UPDATE reView_BOARD
+	   	  SET READ_COUNT = READ_COUNT+1
+	   	  WHERE reView_bo_no = #{reViewBoardNO}	
+	    ]]>
+    </update>
+  	
+	<!-- 단일이미지 추가  -->
+	<!--
+	<insert id="insertNewArticle" parameterType="java.util.Map">
+		<![CDATA[
+			INSERT into reView_BOARD(articleNO,  title, content, imageFileName, id)
+			VALUES(#{articleNO}, #{title}, #{content}, #{imageFileName}, #{id})
+		]]>
+	</insert>
+	
+    <update id="updateArticle" parameterType="java.util.Map">
+   		UPDATE reView_BOARD
+   		set title=#{title}, content=#{content}
+   		<if test="imageFileName != '' and imageFileName != null">
+   			,imageFileName=#{imageFileName}
+		</if>
+      	WHERE articleNO = #{articleNO}
+    </update>
+    
+    
+    -->
+
+	<!-- 다중 이미지 추가 SQL문 -->
+	<insert id="insertNewreViewBoard" parameterType="java.util.Map">
+	    <![CDATA[
+	      INSERT INTO reView_BOARD
+	      (
+	      	reView_bo_no,	parent_no,	mem_id,		title,
+	      	content,	read_count,	write_date,	is_del
+	      )
+	      VALUES(
+	      		#{reViewBoardNO},	#{parentNO}, #{mem_id},	#{title},
+	      		#{content}, 	0, 			 sysdate,	0
+	      		)
+	    ]]>
+	</insert>
+
+	<insert id="insertNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO reView_BOARD_IMG
+			(
+				reView_bo_img_no,	reView_bo_no,	img_filename,
+				reg_date,		is_del
+			)
+			VALUES
+			(
+				#{item.reView_bo_img_no}, #{item.reView_bo_no},	#{item.img_filename},
+				sysdate,		0
+				
+			)
+		</foreach>
+	</insert>
+	
+	<select id="selectNewreViewBoardNO" resultType="int"  >
+		<![CDATA[
+			SELECT nvl(max(reView_bo_no), 0) + 1 FROM reView_BOARD		
+		]]>
+	</select> 
+ 
+	<select id="selectNewImgFileNO" resultType="int"  >
+	  <![CDATA[
+	    SELECT nvl(max(reView_bo_img_no),0) FROM reView_BOARD_IMG		
+	  ]]>
+	</select>
+	
+	<!-- 다중 파일 수정하기 -->
+	<update id="updatereViewBoard" parameterType="java.util.Map">
+		UPDATE reView_BOARD
+		SET title=#{title}, content=#{content}
+		WHERE reView_bo_no = #{reViewBoardNO}
+	</update>
+	
+	<update id="updateImageFile" parameterType="java.util.List">
+		<foreach collection="list" item="item" separator=";" open="DECLARE BEGIN" close="; END;">
+			<choose>
+				<when test="item.imageFileName != null ">
+					UPDATE reView_BOARD_IMG
+					SET img_filename = #{item.img_filename}
+					WHERE reView_bo_no=#{item.reView_bo_no}
+					 AND reView_bo_img_no = #{item.reView_bo_img_no}
+				</when>
+				<otherwise>
+				
+				</otherwise>
+			</choose>
+			<!-- <where> articleN=#{code} AND SE_LOW=#{item.se_low} AND SE_COL=#{item.se_col} </where> -->
+		</foreach>
+	</update>
+  	
+  	<update id="deletereViewBoard" parameterType="int">
+    	<![CDATA[
+    		UPDATE reView_BOARD
+    		SET is_del = 1
+    		WHERE reView_bo_no IN (
+				    			SELECT reView_bo_no
+				    			FROM reView_BOARD
+				    			START WITH reView_bo_no = #{reView_bo_no}
+					      		CONNECT BY PRIOR reView_bo_no=parent_no
+					      	   )  
+    	]]>
+    </update>
+    
+  	<update id="deletereViewBoardImg" parameterType="int">
+    	<![CDATA[
+    		UPDATE reView_BOARD_IMG
+    		SET is_del = 1
+    		WHERE reView_bo_no IN (
+				    			SELECT reView_bo_no
+				    			FROM reView_BOARD
+				    			START WITH reView_bo_no = #{reView_bo_no}
+					      		CONNECT BY PRIOR reView_bo_no=parent_no
+					      	   )
+    	]]>
+    </update>
+
+	<delete id="deleteModImg" parameterType="reViewBoardImgVO">
+	    <![CDATA[
+	      DELETE FROM reView_BOARD_IMG
+	      WHERE reView_bo_no = #{reView_bo_no}
+	       AND reView_bo_img_no = #{reView_bo_img_no}
+	    ]]>
+	</delete>
+	
+	<insert id="insertModNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO reView_BOARD_IMG(reView_bo_img_no, reView_bo_no, img_filename, reg_date,	is_del)
+			VALUES (#{item.reView_bo_img_no}, #{item.reView_bo_no}, #{item.img_filename}, sysdate, 0)
+		</foreach>
+	</insert>
+    
+
+</mapper>

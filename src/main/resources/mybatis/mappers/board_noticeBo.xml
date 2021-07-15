@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mapper.board.noticeBo">
+	<!-- 리절트 맵 정의 -->
+	<resultMap id="noticeBoardResult" type="noticeBoardVO">
+		<result property="level" column="lvl" />
+		<result property="notice_bo_no" column="notice_bo_no" />
+		<result property="parent_no" column="parent_no" />
+		<result property="title" column="title" />
+		<result property="content" column="content" />
+		<result property="read_count" column="read_count" />
+		<result property="write_date" column="write_date" />
+		<result property="mem_id" column="mem_id" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<resultMap id="noticeBoardImgResult" type="noticeBoardImgVO">
+		<result property="notice_bo_img_no" column="notice_bo_img_no" />
+		<result property="notice_bo_no" column="notice_bo_no" />
+		<result property="img_filename" column="img_filename" />
+		<result property="reg_date" column="reg_date" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<!-- 
+	<resultMap id="noticeBoardLikeResult" type="noticeBoardLikeVO">
+		<result property="noticeBoLikeNO" column="noticeBoLikeNO" />
+		<result property="noticeBoNO" column="noticeBoNO" />
+		<result property="mem_id" column="mem_id" />
+	</resultMap>
+	 -->
+	 
+	<!-- 자유게시판 리스트조회(페이징추가) -->
+	<select id="selectAllNoticeBoardsList" resultMap="noticeBoardResult" parameterType="java.util.Map">
+		SELECT * 
+		FROM (
+		        SELECT 	ROWNUM as recNum, 
+		        		lvl,	notice_bo_no,	parent_no, 
+		        		title, 	mem_id, 	write_date, 
+		        		read_count,	is_del
+		        FROM (  
+		                SELECT 	LEVEL as lvl, 
+		                		notice_bo_no,	parent_no,	title,	content,
+		                		mem_id, 	write_date,	read_count,	is_del
+		                FROM NOTICE_BOARD 
+		                START WITH  parent_no = 0 
+		                CONNECT BY PRIOR notice_bo_no = parent_no 
+		                ORDER SIBLINGS BY notice_bo_no DESC
+		             )
+		 	 	WHERE 1=1
+				<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+					<if test="s_category == 'title'">
+						AND TITLE LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'content'">
+						AND CONTENT LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'mem_id'">
+						AND mem_id LIKE '%'||#{s_keyword}||'%'
+					</if>
+				</if>	
+			)
+		WHERE recNum BETWEEN (#{section}-1)*100+(#{pageNum}-1)*10+1 AND (#{section}-1)*100+#{pageNum}*10
+	</select>
+	
+	<select id="selectTotNoticeBoards" resultType="int" parameterType="java.util.Map">
+    	SELECT 	NVL(COUNT(*),0) AS CNT
+		FROM (  
+		        SELECT 	LEVEL as lvl, 
+		                notice_bo_no,	parent_no,	title,	content,
+		                mem_id, 	write_date,	read_count 
+		        FROM NOTICE_BOARD 
+		        START WITH  parent_no = 0 
+		        CONNECT BY PRIOR notice_bo_no = parent_no 
+		        ORDER SIBLINGS BY notice_bo_no DESC
+		     )
+		WHERE 1=1
+		<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+			<if test="s_category == 'title'">
+				AND TITLE LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'content'">
+				AND CONTENT LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'mem_id'">
+				AND mem_id LIKE '%'||#{s_keyword}||'%'
+			</if>
+		</if>
+	</select>
+	
+	<select id="selectNoticeBoard" resultType="noticeBoardVO" parameterType="int">
+	    <![CDATA[
+	      SELECT *
+	      FROM NOTICE_BOARD
+	      WHERE notice_bo_no = #{noticeBoardNO}	
+	    ]]>
+    </select>
+	
+	<select  id="selectImgFileList" resultMap="noticeBoardImgResult" parameterType="int">
+    	<![CDATA[
+	      SELECT * 
+	      FROM NOTICE_BOARD_IMG
+	      WHERE notice_bo_no = #{noticeBoardNO}	
+	    ]]>
+  	</select>  
+  	
+	<update id="updateReadCnt" parameterType="int">
+	    <![CDATA[
+	      UPDATE NOTICE_BOARD
+	   	  SET READ_COUNT = READ_COUNT+1
+	   	  WHERE notice_bo_no = #{noticeBoardNO}	
+	    ]]>
+    </update>
+  	
+	<!-- 단일이미지 추가  -->
+	<!--
+	<insert id="insertNewArticle" parameterType="java.util.Map">
+		<![CDATA[
+			INSERT into NOTICE_BOARD(articleNO,  title, content, imageFileName, id)
+			VALUES(#{articleNO}, #{title}, #{content}, #{imageFileName}, #{id})
+		]]>
+	</insert>
+	
+    <update id="updateArticle" parameterType="java.util.Map">
+   		UPDATE NOTICE_BOARD
+   		set title=#{title}, content=#{content}
+   		<if test="imageFileName != '' and imageFileName != null">
+   			,imageFileName=#{imageFileName}
+		</if>
+      	WHERE articleNO = #{articleNO}
+    </update>
+    
+    
+    -->
+
+	<!-- 다중 이미지 추가 SQL문 -->
+	<insert id="insertNewNoticeBoard" parameterType="java.util.Map">
+	    <![CDATA[
+	      INSERT INTO NOTICE_BOARD
+	      (
+	      	notice_bo_no,	parent_no,	mem_id,		title,
+	      	content,	read_count,	write_date,	is_del
+	      )
+	      VALUES(
+	      		#{noticeBoardNO},	#{parentNO}, #{mem_id},	#{title},
+	      		#{content}, 	0, 			 sysdate,	0
+	      		)
+	    ]]>
+	</insert>
+
+	<insert id="insertNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO NOTICE_BOARD_IMG
+			(
+				notice_bo_img_no,	notice_bo_no,	img_filename,
+				reg_date,		is_del
+			)
+			VALUES
+			(
+				#{item.notice_bo_img_no}, #{item.notice_bo_no},	#{item.img_filename},
+				sysdate,		0
+				
+			)
+		</foreach>
+	</insert>
+	
+	<select id="selectNewNoticeBoardNO" resultType="int"  >
+		<![CDATA[
+			SELECT nvl(max(notice_bo_no), 0) + 1 FROM NOTICE_BOARD		
+		]]>
+	</select> 
+ 
+	<select id="selectNewImgFileNO" resultType="int"  >
+	  <![CDATA[
+	    SELECT nvl(max(notice_bo_img_no),0) FROM NOTICE_BOARD_IMG		
+	  ]]>
+	</select>
+	
+	<!-- 다중 파일 수정하기 -->
+	<update id="updateNoticeBoard" parameterType="java.util.Map">
+		UPDATE NOTICE_BOARD
+		SET title=#{title}, content=#{content}
+		WHERE notice_bo_no = #{noticeBoardNO}
+	</update>
+	
+	<update id="updateImageFile" parameterType="java.util.List">
+		<foreach collection="list" item="item" separator=";" open="DECLARE BEGIN" close="; END;">
+			<choose>
+				<when test="item.imageFileName != null ">
+					UPDATE NOTICE_BOARD_IMG
+					SET img_filename = #{item.img_filename}
+					WHERE notice_bo_no=#{item.notice_bo_no}
+					 AND notice_bo_img_no = #{item.notice_bo_img_no}
+				</when>
+				<otherwise>
+				
+				</otherwise>
+			</choose>
+			<!-- <where> articleN=#{code} AND SE_LOW=#{item.se_low} AND SE_COL=#{item.se_col} </where> -->
+		</foreach>
+	</update>
+  	
+  	<update id="deleteNoticeBoard" parameterType="int">
+    	<![CDATA[
+    		UPDATE NOTICE_BOARD
+    		SET is_del = 1
+    		WHERE notice_bo_no IN (
+				    			SELECT notice_bo_no
+				    			FROM NOTICE_BOARD
+				    			START WITH notice_bo_no = #{notice_bo_no}
+					      		CONNECT BY PRIOR notice_bo_no=parent_no
+					      	   )  
+    	]]>
+    </update>
+    
+  	<update id="deleteNoticeBoardImg" parameterType="int">
+    	<![CDATA[
+    		UPDATE NOTICE_BOARD_IMG
+    		SET is_del = 1
+    		WHERE notice_bo_no IN (
+				    			SELECT notice_bo_no
+				    			FROM NOTICE_BOARD
+				    			START WITH notice_bo_no = #{notice_bo_no}
+					      		CONNECT BY PRIOR notice_bo_no=parent_no
+					      	   )
+    	]]>
+    </update>
+
+	<delete id="deleteModImg" parameterType="noticeBoardImgVO">
+	    <![CDATA[
+	      DELETE FROM NOTICE_BOARD_IMG
+	      WHERE notice_bo_no = #{notice_bo_no}
+	       AND notice_bo_img_no = #{notice_bo_img_no}
+	    ]]>
+	</delete>
+	
+	<insert id="insertModNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO NOTICE_BOARD_IMG(notice_bo_img_no, notice_bo_no, img_filename, reg_date,	is_del)
+			VALUES (#{item.notice_bo_img_no}, #{item.notice_bo_no}, #{item.img_filename}, sysdate, 0)
+		</foreach>
+	</insert>
+    
+
+</mapper>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration 	PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+  <typeAliases>
+    <typeAlias type="com.marketSpring.goods.vo.GoodsVO" alias="goodsVO" />
+    <typeAlias type="com.marketSpring.goods.vo.ImageFileVO" alias="imageFileVO" />
+    <typeAlias type="com.marketSpring.member.vo.MemberVO" alias="memberVO" />
+    <typeAlias type="com.marketSpring.cart.vo.CartVO" alias="cartVO" />
+    <typeAlias type="com.marketSpring.order.vo.OrderVO" alias="orderVO" />
+    <typeAlias type="com.marketSpring.mypage.vo.MyPageVO" alias="mypageVO" />
+    <typeAlias type="com.marketSpring.board.vo.ArticleVO" alias="articleVO" />
+    <typeAlias type="com.marketSpring.board.vo.ImageVO" alias="imageVO" />
+
+    <typeAlias type="com.marketSpring.board.freeBo.vo.FreeBoardVO" alias="freeBoardVO" />
+    <typeAlias type="com.marketSpring.board.freeBo.vo.FreeBoardImgVO" alias="freeBoardImgVO" />
+
+    <typeAlias type="com.marketSpring.board.noticeBo.vo.NoticeBoardVO" alias="noticeBoardVO" />
+    <typeAlias type="com.marketSpring.board.noticeBo.vo.NoticeBoardImgVO" alias="noticeBoardImgVO" />
+    
+    <typeAlias type="com.marketSpring.board.qnaBoard.vo.qnaBoardVO" alias="qnaBoardVO" />
+    <typeAlias type="com.marketSpring.board.qnaBoard.vo.qnaBoardImgVO" alias="qnaBoardImgVO" />
+    
+    <typeAlias type="com.marketSpring.board.reViewBo.vo.reViewBoardVO" alias="reViewBoardVO" />
+    <typeAlias type="com.marketSpring.board.reViewBo.vo.reViewBoardImgVO" alias="reViewBoardImgVO" />
+    
+    
+  </typeAliases>
+</configuration>
+
+
+

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="mapper.board.qnaBo">
+	<!-- 리절트 맵 정의 -->
+	<resultMap id="qnaBoardResult" type="qnaBoardVO">
+		<result property="level" column="lvl" />
+		<result property="qna_bo_no" column="qna_bo_no" />
+		<result property="parent_no" column="parent_no" />
+		<result property="title" column="title" />
+		<result property="content" column="content" />
+		<result property="read_count" column="read_count" />
+		<result property="write_date" column="write_date" />
+		<result property="mem_id" column="mem_id" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<resultMap id="qnaBoardImgResult" type="qnaBoardImgVO">
+		<result property="qna_bo_img_no" column="qna_bo_img_no" />
+		<result property="qna_bo_no" column="qna_bo_no" />
+		<result property="img_filename" column="img_filename" />
+		<result property="reg_date" column="reg_date" />
+		<result property="is_del" column="is_del" />
+	</resultMap>
+	
+	<!-- 
+	<resultMap id="freeBoardLikeResult" type="freeBoardLikeVO">
+		<result property="freeBoLikeNO" column="freeBoLikeNO" />
+		<result property="freeBoNO" column="freeBoNO" />
+		<result property="mem_id" column="mem_id" />
+	</resultMap>
+	 -->
+	 
+	<!-- 문의게시판 리스트조회(페이징추가) -->
+	<select id="selectAllqnaBoardsList" resultMap="qnaBoardResult" parameterType="java.util.Map">
+		SELECT * 
+		FROM (
+		        SELECT 	ROWNUM as recNum, 
+		        		lvl,	qna_bo_no,	parent_no, 
+		        		title, 	mem_id, 	write_date, 
+		        		read_count,	is_del
+		        FROM (  
+		                SELECT 	LEVEL as lvl, 
+		                		qna_bo_no,	parent_no,	title,	content,
+		                		mem_id, 	write_date,	read_count,	is_del
+		                FROM QNA_BOARD 
+		                START WITH  parent_no = 0 
+		                CONNECT BY PRIOR qna_bo_no = parent_no 
+		                ORDER SIBLINGS BY qna_bo_no DESC
+		             )
+		 	 	WHERE 1=1
+				<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+					<if test="s_category == 'title'">
+						AND TITLE LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'content'">
+						AND CONTENT LIKE '%'||#{s_keyword}||'%'
+					</if>
+					<if test="s_category == 'mem_id'">
+						AND mem_id LIKE '%'||#{s_keyword}||'%'
+					</if>
+				</if>	
+			)
+		WHERE recNum BETWEEN (#{section}-1)*100+(#{pageNum}-1)*10+1 AND (#{section}-1)*100+#{pageNum}*10
+	</select>
+	
+	<select id="selectTotqnaBoards" resultType="int" parameterType="java.util.Map">
+    	SELECT 	NVL(COUNT(*),0) AS CNT
+		FROM (  
+		        SELECT 	LEVEL as lvl, 
+		                qna_bo_no,	parent_no,	title,	content,
+		                mem_id, 	write_date,	read_count 
+		        FROM QNA_BOARD 
+		        START WITH  parent_no = 0 
+		        CONNECT BY PRIOR qna_bo_no = parent_no 
+		        ORDER SIBLINGS BY qna_bo_no DESC
+		     )
+		WHERE 1=1
+		<if test="s_category != '' and s_category != null and s_keyword != '' and s_keyword != null">
+			<if test="s_category == 'title'">
+				AND TITLE LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'content'">
+				AND CONTENT LIKE '%'||#{s_keyword}||'%'
+			</if>
+			<if test="s_category == 'mem_id'">
+				AND mem_id LIKE '%'||#{s_keyword}||'%'
+			</if>
+		</if>
+	</select>
+	
+	<select id="selectqnaBoard" resultType="qnaBoardVO" parameterType="int">
+	    <![CDATA[
+	      SELECT *
+	      FROM QNA_BOARD
+	      WHERE qna_bo_no = #{qnaBoardNO}	
+	    ]]>
+    </select>
+	
+	<select  id="selectImgFileList" resultMap="qnaBoardImgResult" parameterType="int">
+    	<![CDATA[
+	      SELECT * 
+	      FROM QNA_BOARD_IMG
+	      WHERE qna_bo_no = #{qnaBoardNO}	
+	    ]]>
+  	</select>  
+  	
+	<update id="updateReadCnt" parameterType="int">
+	    <![CDATA[
+	      UPDATE QNA_BOARD
+	   	  SET READ_COUNT = READ_COUNT+1
+	   	  WHERE qna_bo_no = #{qnaBoardNO}	
+	    ]]>
+    </update>
+  	
+	<!-- 단일이미지 추가  -->
+	<!--
+	<insert id="insertNewArticle" parameterType="java.util.Map">
+		<![CDATA[
+			INSERT into FREE_BOARD(articleNO,  title, content, imageFileName, id)
+			VALUES(#{articleNO}, #{title}, #{content}, #{imageFileName}, #{id})
+		]]>
+	</insert>
+	
+    <update id="updateArticle" parameterType="java.util.Map">
+   		UPDATE FREE_BOARD
+   		set title=#{title}, content=#{content}
+   		<if test="imageFileName != '' and imageFileName != null">
+   			,imageFileName=#{imageFileName}
+		</if>
+      	WHERE articleNO = #{articleNO}
+    </update>
+    
+    
+    -->
+
+	<!-- 다중 이미지 추가 SQL문 -->
+	<insert id="insertNewqnaBoard" parameterType="java.util.Map">
+	    <![CDATA[
+	      INSERT INTO QNA_BOARD
+	      (
+	      	qna_bo_no,	parent_no,	mem_id,		title,
+	      	content,	read_count,	write_date,	is_del
+	      )
+	      VALUES(
+	      		#{qnaBoardNO},	#{parentNO}, #{mem_id},	#{title},
+	      		#{content}, 	0, 			 sysdate,	0
+	      		)
+	    ]]>
+	</insert>
+
+	<insert id="insertNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO QNA_BOARD_IMG
+			(
+				qna_bo_img_no,	qna_bo_no,	img_filename,
+				reg_date,		is_del
+			)
+			VALUES
+			(
+				#{item.qna_bo_img_no}, #{item.qna_bo_no},	#{item.img_filename},
+				sysdate,		0
+				
+			)
+		</foreach>
+	</insert>
+	
+	<select id="selectNewqnaBoardNO" resultType="int"  >
+		<![CDATA[
+			SELECT nvl(max(qna_bo_no), 0) + 1 FROM QNA_BOARD		
+		]]>
+	</select> 
+ 
+	<select id="selectNewImgFileNO" resultType="int"  >
+	  <![CDATA[
+	    SELECT nvl(max(qna_bo_img_no),0) FROM QNA_BOARD_IMG		
+	  ]]>
+	</select>
+	
+	<!-- 다중 파일 수정하기 -->
+	<update id="updateqnaBoard" parameterType="java.util.Map">
+		UPDATE QNA_BOARD
+		SET title=#{title}, content=#{content}
+		WHERE qna_bo_no = #{qnaBoardNO}
+	</update>
+	
+	<update id="updateImageFile" parameterType="java.util.List">
+		<foreach collection="list" item="item" separator=";" open="DECLARE BEGIN" close="; END;">
+			<choose>
+				<when test="item.imageFileName != null ">
+					UPDATE QNA_BOARD_IMG
+					SET img_filename = #{item.img_filename}
+					WHERE qna_bo_no=#{item.qna_bo_no}
+					 AND qna_bo_img_no = #{item.qna_bo_img_no}
+				</when>
+				<otherwise>
+				
+				</otherwise>
+			</choose>
+			<!-- <where> articleN=#{code} AND SE_LOW=#{item.se_low} AND SE_COL=#{item.se_col} </where> -->
+		</foreach>
+	</update>
+  	
+  	<update id="deleteqnaBoard" parameterType="int">
+    	<![CDATA[
+    		UPDATE qna_BOARD
+    		SET is_del = 1
+    		WHERE qna_bo_no IN (
+				    			SELECT qna_bo_no
+				    			FROM QNA_BOARD
+				    			START WITH qna_bo_no = #{qna_bo_no}
+					      		CONNECT BY PRIOR qna_bo_no=parent_no
+					      	   )  
+    	]]>
+    </update>
+    
+  	<update id="deleteqnaBoardImg" parameterType="int">
+    	<![CDATA[
+    		UPDATE QNA_BOARD_IMG
+    		SET is_del = 1
+    		WHERE qna_bo_no IN (
+				    			SELECT qna_bo_no
+				    			FROM QNA_BOARD
+				    			START WITH qna_bo_no = #{qna_bo_no}
+					      		CONNECT BY PRIOR qna_bo_no=parent_no
+					      	   )
+    	]]>
+    </update>
+
+	<delete id="deleteModImg" parameterType="qnaBoardImgVO">
+	    <![CDATA[
+	      DELETE FROM QNA_BOARD_IMG
+	      WHERE qna_bo_no = #{qna_bo_no}
+	       AND qna_bo_img_no = #{qna_bo_img_no}
+	    ]]>
+	</delete>
+	
+	<insert id="insertModNewImg" parameterType="java.util.Map">
+		<foreach item="item" collection="list" open="INSERT ALL" separator=" " close="SELECT * FROM DUAL">
+			INTO QNA_BOARD_IMG(qna_bo_img_no, qna_bo_no, img_filename, reg_date,	is_del)
+			VALUES (#{item.qna_bo_img_no}, #{item.qna_bo_no}, #{item.img_filename}, sysdate, 0)
+		</foreach>
+	</insert>
+    
+
+</mapper>
