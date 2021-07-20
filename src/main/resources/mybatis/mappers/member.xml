@@ -41,8 +41,7 @@
 	    <![CDATA[
 			select * from t_shopping_member 
 			 where member_id=#{member_id}
-			 and member_pw=#{member_pw}			
-			 
+			 <!-- and member_pw=#{member_pw} -->
 		]]>
 	</select>
 	

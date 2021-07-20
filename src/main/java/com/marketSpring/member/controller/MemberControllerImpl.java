@@ -10,12 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.marketSpring.common.base.BaseController;
@@ -29,42 +29,29 @@ public class MemberControllerImpl extends BaseController implements MemberContro
 	private MemberService memberService;
 	@Autowired
 	private MemberVO memberVO;
+	@Autowired
+	BCryptPasswordEncoder passEncoder;
 	
 	@Override
 	@RequestMapping(value="/login.do" ,method = RequestMethod.POST)
 	public ModelAndView login(@RequestParam Map<String, String> loginMap,
 			                  HttpServletRequest request, HttpServletResponse response) throws Exception {
 		ModelAndView mav = new ModelAndView();
-		memberVO=memberService.login(loginMap);
-//		if(memberVO!= null && memberVO.getMember_id()!=null){
-//			HttpSession session=request.getSession();
-//			session=request.getSession();
-//			session.setAttribute("isLogOn", true);
-//			session.setAttribute("memberInfo",memberVO);
-//			
-//			String action=(String)session.getAttribute("action");
-//			if(action!=null && action.equals("/order/orderEachGoods.do")){
-//				mav.setViewName("forward:"+action);
-//			}else{
-//				mav.setViewName("redirect:/main/main.do");	
-//			}
-//			
-//			
-//			
-//		}else{
-//			String message="���̵�  ��й�ȣ�� Ʋ���ϴ�. �ٽ� �α������ּ���";
-//			mav.addObject("message", message);
-//			mav.setViewName("/member/loginForm");
-//		}
-//		return mav;
-		if (memberVO != null && memberVO.getMember_id() != null) {
+		
+		memberVO = memberService.login(loginMap);
+	    
+	    String passwd = loginMap.get("member_pw");
+	    // 사용자 로그인 시 입력한 평문 패스워드와 DB에 저장된 패스워드를 matches를 통해 비교
+		boolean passMatch = passEncoder.matches(passwd, memberVO.getMember_pw());
+	    
+		if (memberVO != null && passMatch) {
 			HttpSession session = request.getSession();
 			session = request.getSession();
 			session.setAttribute("isLogOn", true);
 			session.setAttribute("memberInfo", memberVO);
 
 			String action = (String) session.getAttribute("action");
-//			System.out.println("c -> action: " + action);
+			
 			if (action != null && action.equals("/order/orderEachGoods.do")) {
 				mav.setViewName("forward:" + action);
 			} else if (action != null && action.equals("/board/articleForm.do")) {
@@ -109,15 +96,21 @@ public class MemberControllerImpl extends BaseController implements MemberContro
 		HttpHeaders responseHeaders = new HttpHeaders();
 		responseHeaders.add("Content-Type", "text/html; charset=utf-8");
 		try {
+			// 사용자가 입력한 평문 암호를 passEncoder를 이용해 암호화
+			String inputPass = _memberVO.getMember_pw();
+			String pass = passEncoder.encode(inputPass);
+			_memberVO.setMember_pw(pass);
+			
 		    memberService.addMember(_memberVO);
+		    
 		    message  = "<script>";
-		    message +=" alert('ȸ�� ������ ���ƽ��ϴ�.�α���â���� �̵��մϴ�.');";
+		    message +=" alert('회원 가입을 마쳤습니다.로그인창으로 이동합니다.');";
 		    message += " location.href='"+request.getContextPath()+"/member/loginForm.do';";
 		    message += " </script>";
 		    
 		}catch(Exception e) {
 			message  = "<script>";
-		    message +=" alert('�۾� �� ������ �߻��߽��ϴ�. �ٽ� �õ��� �ּ���');";
+		    message +=" alert('작업 중 오류가 발생했습니다. 다시 시도해 주세요');";
 		    message += " location.href='"+request.getContextPath()+"/member/memberForm.do';";
 		    message += " </script>";
 			e.printStackTrace();
